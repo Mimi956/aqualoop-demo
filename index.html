@@ -1,0 +1,258 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AquaLoop OS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            oc: { 950: '#060a17', 900: '#0b132b', 800: '#111d3d' },
+            cyan: '#00f5d4',
+            blue: '#00bbf9'
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body class="bg-oc-950 text-slate-200">
+  <div id="toast" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- HEADER -->
+  <header class="glass sticky top-0 z-40 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan to-blue flex items-center justify-center text-oc-950 font-bold text-xl">
+            <i class="fa-solid fa-water"></i>
+          </div>
+          <div>
+            <span class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan to-slate-100">
+              AquaLoop<span class="text-xs ml-1 px-1.5 py-0.5 rounded bg-cyan/20 text-cyan font-mono">v2.6</span>
+            </span>
+            <p class="text-[11px] text-slate-400">Marine Infrastructure</p>
+          </div>
+        </div>
+
+        <button id="auth-btn" onclick="openAuthModal()" class="btn-sub bg-cyan/20 text-cyan border-cyan/40">
+          <i class="fa-solid fa-user-lock"></i>
+          <span id="auth-lbl">Login</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="border-t border-slate-800 bg-oc-900/40">
+      <div class="max-w-7xl mx-auto px-4">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 py-2 text-xs">
+          <span class="text-slate-400">Region:</span>
+          <div class="flex items-center gap-2">
+            <button id="reg-in" type="button" onclick="setRegion('India')" aria-pressed="true" class="btn-sub bg-cyan/20 text-cyan">🇮🇳 India</button>
+            <button id="reg-png" type="button" onclick="setRegion('PNG')" aria-pressed="false" class="btn-sub text-slate-400">🇵🇬 PNG</button>
+          </div>
+          <select id="harbor-sel" aria-label="Harbor" onchange="setHarbor(this.value)" class="inp py-1 text-xs bg-oc-950 sm:w-auto sm:min-w-40"></select>
+        </div>
+        <nav class="flex space-x-2 py-2 overflow-x-auto text-xs font-semibold">
+          <button id="tab-login" onclick="switchTab('login')" class="tab-btn tab-act bg-cyan/20 text-cyan"><i class="fa-solid fa-key"></i> Logging Portal</button>
+          <button id="tab-fisher" onclick="switchTab('fisher')" class="tab-btn text-slate-400"><i class="fa-solid fa-mobile"></i> Fisher Hub</button>
+          <button id="tab-mfr" onclick="switchTab('mfr')" class="tab-btn text-slate-400"><i class="fa-solid fa-industry"></i> NetPassport & EPR</button>
+          <button id="tab-mkt" onclick="switchTab('mkt')" class="tab-btn text-slate-400"><i class="fa-solid fa-store"></i> Recyclers</button>
+          <button id="tab-map" onclick="switchTab('map')" class="tab-btn text-slate-400"><i class="fa-solid fa-map"></i> Impact Map</button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- TICKER -->
+  <div class="bg-oc-900 border-b border-slate-800 py-2 px-4 text-xs font-mono">
+    <div class="max-w-7xl mx-auto overflow-x-auto">
+      <div class="flex min-w-max space-x-4">
+        <span class="text-cyan"><i class="fa-solid fa-bolt"></i> Impact:</span>
+        <span>Diverted: <strong id="tk-waste" class="text-white">18,420 MT</strong></span>
+        <span>Payouts: <strong id="tk-pay" class="text-emerald-400">₹ 4,120,500</strong></span>
+        <span>Nets: <strong id="tk-nets" class="text-blue">14,290</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- VIEW 0: LOGIN -->
+    <section id="view-login" class="v-pan">
+      <div class="max-w-md mx-auto glass p-6 rounded-2xl space-y-4">
+        <h2 class="text-lg font-bold text-white text-center">System Portal Access</h2>
+        <div class="flex rounded-lg bg-oc-950 p-1 text-xs">
+          <button id="p-t-log" type="button" onclick="setPortMode('log')" aria-pressed="true" class="flex-1 py-1.5 rounded bg-cyan/20 text-cyan">Login</button>
+          <button id="p-t-reg" type="button" onclick="setPortMode('reg')" aria-pressed="false" class="flex-1 py-1.5 rounded text-slate-400">Register</button>
+        </div>
+
+        <form id="f-log" onsubmit="onPortalLog(event)" class="space-y-3 text-xs">
+          <input type="text" id="log-uid" placeholder="Fisher ID / Phone" required class="inp">
+          <input type="password" id="log-pin" placeholder="PIN Code" required class="inp">
+          <button type="submit" class="btn bg-cyan text-oc-950 w-full">Sign In</button>
+        </form>
+
+        <form id="f-reg" onsubmit="onPortalReg(event)" class="hidden space-y-3 text-xs">
+          <input type="text" id="reg-nam" placeholder="Full Name" autocomplete="name" required class="inp">
+          <input type="text" id="reg-uid" placeholder="ID Number" autocomplete="username" required class="inp">
+          <input type="password" id="reg-pin" placeholder="Create PIN" minlength="4" autocomplete="new-password" required class="inp">
+          <div class="border-t border-slate-800 pt-3 space-y-3">
+            <p class="font-bold text-white">Bank account for wallet payouts</p>
+            <input type="text" id="reg-bank-hol" placeholder="Account Holder Name" autocomplete="cc-name" required class="inp">
+            <input type="text" id="reg-bank-nam" placeholder="Bank Name" autocomplete="organization" required class="inp">
+            <input type="text" id="reg-bank-num" placeholder="Account Number" inputmode="numeric" autocomplete="off" required class="inp">
+            <input type="text" id="reg-bank-ifsc" placeholder="IFSC / SWIFT / Routing Code" autocomplete="off" required class="inp">
+            <p class="text-[10px] text-amber-300">Demo only: details stay in this browser session. This prototype does not connect to banks; withdrawals are simulated.</p>
+          </div>
+          <button type="submit" class="btn bg-emerald-400 text-oc-950 w-full">Create Account</button>
+        </form>
+
+        <div id="p-act" class="hidden text-xs space-y-3 border-t border-slate-800 pt-3">
+          <p id="p-usr-info" class="font-bold text-cyan"></p>
+          <button onclick="onLogout()" class="btn border border-slate-700 text-slate-300 w-full">Logout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 1: FISHER -->
+    <section id="view-fisher" class="v-pan hidden space-y-6">
+      <div class="glass rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <span id="f-port-lbl" class="text-xs text-cyan bg-cyan/10 px-2 py-0.5 rounded-full">Kochi Harbor</span>
+          <h1 class="text-xl font-bold text-white mt-1">Fisher & Collector Portal</h1>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <div class="bg-oc-950 p-3 rounded-xl text-right">
+            <span class="text-[10px] text-slate-400 block">Digital Wallet</span>
+            <p id="f-bal" class="text-lg font-bold text-emerald-400 font-mono">₹ 12,450.00</p>
+          </div>
+          <button onclick="openModal('m-bank')" class="btn bg-oc-900 border border-slate-700 text-xs">Bank Info</button>
+          <button onclick="openModal('m-wdraw')" class="btn bg-emerald-400 text-oc-950 text-xs">Withdraw</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass p-5 rounded-2xl space-y-4">
+          <h2 class="font-bold text-white">Deposit Refund Scanner</h2>
+          <div class="w-full h-44 bg-oc-950 rounded-xl border-2 border-dashed border-cyan/40 flex items-center justify-center relative">
+            <i class="fa-solid fa-camera text-3xl text-cyan/40"></i>
+            <div id="scan-beam" class="hidden absolute inset-0 bg-cyan/10 border-b-2 border-cyan laser"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button onclick="doScan('NET-IN-2026-8842')" class="p-2 bg-oc-900 rounded border border-slate-800 text-left">
+              <p class="font-bold text-cyan">NET-IN-2026-8842</p>
+              <span class="text-[10px] text-slate-400">Nylon-6 • Kochi</span>
+            </button>
+            <button onclick="doScan('NET-PNG-2026-1109')" class="p-2 bg-oc-900 rounded border border-slate-800 text-left">
+              <p class="font-bold text-cyan">NET-PNG-2026-1109</p>
+              <span class="text-[10px] text-slate-400">HDPE • PNG</span>
+            </button>
+          </div>
+
+          <div id="net-card" class="hidden bg-oc-900 p-4 rounded-xl border border-emerald-500/30 space-y-2 text-xs">
+            <div class="flex justify-between">
+              <h3 id="net-id" class="font-bold font-mono text-white">NET-ID</h3>
+              <p id="net-ref" class="font-bold text-emerald-400">₹ 0</p>
+            </div>
+            <button onclick="claimRefund()" class="btn bg-emerald-400 text-oc-950 w-full">Claim Digital Refund</button>
+          </div>
+        </div>
+
+        <div class="glass p-5 rounded-2xl space-y-4">
+          <h2 class="font-bold text-white">Report Lost Ghost Gear</h2>
+          <form onsubmit="onGhostSub(event)" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <select id="gg-type" class="inp"><option>Nylon-6 Gillnet</option><option>HDPE Trawl Net</option></select>
+              <input type="number" id="gg-wt" placeholder="Weight (kg)" required class="inp">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" id="gg-dp" placeholder="Depth (m)" required class="inp">
+              <input type="text" id="gg-gps" value="9.9214° N, 76.2510° E" required class="inp">
+            </div>
+            <button type="submit" class="btn bg-cyan/20 text-cyan border border-cyan/40 w-full">Submit Bounty Alert</button>
+          </form>
+
+          <div class="border-t border-slate-800 pt-3">
+            <h3 class="font-bold text-xs text-white mb-2">Active Bounties</h3>
+            <div id="bty-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: MANUFACTURER -->
+    <section id="view-mfr" class="v-pan hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 glass p-5 rounded-2xl space-y-4">
+          <h2 class="font-bold text-white">Issue NetPassport Tag</h2>
+          <form onsubmit="onPassGen(event)" class="space-y-3 text-xs">
+            <input type="text" id="m-nam" value="Garware Marine Synthetics" class="inp">
+            <div class="grid grid-cols-2 gap-2">
+              <select id="m-poly" class="inp"><option>PA6 Nylon-6</option><option>HDPE Monofilament</option></select>
+              <select id="m-mesh" class="inp"><option>Gillnet</option><option>Trawl Net</option></select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" id="m-wt" value="50" class="inp">
+              <input type="number" id="m-dep" value="4500" class="inp">
+            </div>
+            <button type="submit" class="btn bg-blue text-oc-950 w-full">Generate Passport</button>
+          </form>
+          <div id="qr-box" class="hidden bg-oc-900 p-4 rounded-xl flex flex-col items-center gap-2">
+            <div id="qrcode"></div>
+            <p id="qr-id" class="font-mono text-cyan font-bold text-xs"></p>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 glass p-5 rounded-2xl space-y-4 text-xs">
+          <h2 class="font-bold text-white">National EPR Targets</h2>
+          <div class="w-full bg-oc-950 h-3 rounded-full overflow-hidden border border-slate-800">
+            <div id="epr-bar" class="h-full bg-cyan transition-all" style="width: 78%;"></div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left font-mono">
+              <thead><tr class="text-slate-500 border-b border-slate-800"><th class="py-1">Tag ID</th><th>Material</th><th>Deposit</th><th>Status</th></tr></thead>
+              <tbody id="reg-tbl"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: MARKETPLACE -->
+    <section id="view-mkt" class="v-pan hidden space-y-6">
+      <div id="mkt-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+    </section>
+
+    <!-- VIEW 4: MAP & ANALYTICS -->
+    <section id="view-map" class="v-pan hidden space-y-6">
+      <div class="glass p-5 rounded-2xl space-y-3">
+        <h2 class="font-bold text-white text-sm">Marine Hotspot Recovery Map</h2>
+        <div id="interactive-map" class="w-full h-80 rounded-xl border border-slate-800"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="glass p-4 rounded-2xl"><canvas id="chart-m" class="h-56"></canvas></div>
+        <div class="glass p-4 rounded-2xl"><canvas id="chart-p" class="h-56"></canvas></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODALS -->
+  <div id="m-bank" class="modal hidden"><div class="m-body"><h3 class="font-bold text-white text-sm">Bank Details</h3><form onsubmit="onBankSave(event)" class="space-y-3 text-xs"><input type="text" id="b-hol" placeholder="Account Holder Name" required class="inp"><input type="text" id="b-nam" placeholder="Bank Name" required class="inp"><input type="text" id="b-num" placeholder="Account Number" inputmode="numeric" required class="inp"><input type="text" id="b-ifsc" placeholder="IFSC / SWIFT / Routing Code" required class="inp"><button type="submit" class="btn bg-cyan text-oc-950 w-full">Save</button></form></div></div>
+  <div id="m-wdraw" class="modal hidden"><div class="m-body"><h3 class="font-bold text-white text-sm">Withdraw to Bank</h3><form onsubmit="onWithdraw(event)" class="space-y-3 text-xs"><p id="w-bal" class="text-emerald-400 font-mono text-base font-bold"></p><p id="w-bank-account" class="text-slate-300"></p><input type="number" id="w-amt" placeholder="Amount" min="0.01" step="0.01" required class="inp"><p class="text-[10px] text-amber-300">Demo only: this records a simulated withdrawal; no money is sent to a bank.</p><button type="submit" class="btn bg-emerald-400 text-oc-950 w-full">Simulate Withdrawal</button></form></div></div>
+</body>
+</html>
